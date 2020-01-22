@@ -3,7 +3,8 @@ import pandas as pd
 import pyfaidx
 
 
-def bgi_anno_2_vcf_format(df, reference):
+def bgi_anno_2_vcf_format(in_df, reference):
+    df = in_df.copy()
     df['#Chr'] = df['#Chr'].astype('str')
     if len(df[df['#Chr'].str.startswith('chr')]):
         df['#CHROM'] = df['#Chr']
@@ -42,7 +43,8 @@ def bgi_anno_2_vcf_format(df, reference):
     return a, b, df
 
 
-def vcf_format_2_bgi_anno(df):
+def vcf_format_2_bgi_anno(in_df):
+    df = in_df.copy()
     df['MuType'] = 'delins'
     df.loc[(df['REF'].str.len() == 1) & (df['ALT'].str.len() == 1), 'MuType'] = 'snv'
     df.loc[(df['REF'].str.len() == 1) & (df['ALT'].str.len() > 1), 'MuType'] = 'ins'
