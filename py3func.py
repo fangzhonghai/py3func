@@ -157,6 +157,41 @@ def vcf_format_2_bgi_anno(in_df):
     return a, df
 
 
+def vcf_format_2_bgi_anno_final(in_df):
+    df = in_df.copy()
+    df['MuType'] = '.'
+    df.loc[(df['REF'].str.len() == 1) & (df['ALT'].str.len() == 1), 'MuType'] = 'snv'
+    df.loc[(df['REF'].str.len() == 1) & (df['ALT'].str.len() > 1), 'MuType'] = 'ins'
+    df.loc[(df['REF'].str.len() > 1) & (df['ALT'].str.len() == 1), 'MuType'] = 'del'
+    df.loc[(df['REF'].str.len() > 1) & (df['ALT'].str.len() > 1) & (df['REF'].str[0] == df['ALT'].str[0]), 'MuType'] = 'delins_eq'
+    df.loc[(df['REF'].str.len() > 1) & (df['ALT'].str.len() > 1) & (df['REF'].str[0] != df['ALT'].str[0]), 'MuType'] = 'delins_neq'
+    df['#CHROM'] = df['#CHROM'].astype('str')
+    if len(df[df['#CHROM'].str.startswith('chr')]):
+        df['#Chr'] = df['#CHROM']
+    else:
+        df['#Chr'] = 'chr' + df['#CHROM']
+    df.loc[df['#CHROM'] == 'chrM_NC_012920.1', '#Chr'] = 'chrMT'
+    df['Start'] = df['POS'].astype(int) - 1
+    df['Stop'] = df['POS'].astype(int)
+    df['Ref'] = df['REF']
+    df['Call'] = df['ALT']
+    df.loc[df['MuType'] == 'ins', 'Ref'] = '.'
+    df.loc[df['MuType'] == 'ins', 'Call'] = df.loc[df['MuType'] == 'ins', 'ALT'].str[1:]
+    df.loc[df['MuType'] == 'del', 'Call'] = '.'
+    df.loc[df['MuType'] == 'del', 'Ref'] = df.loc[df['MuType'] == 'del', 'REF'].str[1:]
+    df.loc[df['MuType'] == 'ins', 'Start'] = df.loc[df['MuType'] == 'ins', 'Stop']
+    df.loc[df['MuType'] == 'del', 'Start'] = df.loc[df['MuType'] == 'del', 'Stop']
+    df.loc[df['MuType'] == 'del', 'Stop'] = df.loc[df['MuType'] == 'del', 'Stop'] + df.loc[df['MuType'] == 'del', 'Ref'].str.len()
+    df.loc[df['MuType'] == 'delins_eq', 'Stop'] = df.loc[df['MuType'] == 'delins_eq', 'Start'] + df.loc[df['MuType'] == 'delins_eq', 'Ref'].str.len()
+    df.loc[df['MuType'] == 'delins_eq', 'Start'] = df.loc[df['MuType'] == 'delins_eq', 'POS']
+    df.loc[df['MuType'] == 'delins_eq', 'Ref'] = df.loc[df['MuType'] == 'delins_eq', 'REF'].str[1:]
+    df.loc[df['MuType'] == 'delins_eq', 'Call'] = df.loc[df['MuType'] == 'delins_eq', 'ALT'].str[1:]
+    df.loc[df['MuType'] == 'delins_neq', 'Stop'] = df.loc[df['MuType'] == 'delins_neq', 'Start'] + df.loc[df['MuType'] == 'delins_neq', 'Ref'].str.len()
+    a = df[['#CHROM', 'POS', 'REF', 'ALT', '#Chr', 'Start', 'Stop', 'Ref', 'Call']].copy()
+    df.drop(columns=['MuType'], inplace=True)
+    return a, df
+
+
 def interpretation(spliceai_list, chrom, pos):
     threshold = 0.11
     ds = spliceai_list[0:4]
